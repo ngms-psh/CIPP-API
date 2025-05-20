@@ -12,6 +12,9 @@ function Set-CIPPAuthenticationPolicy {
         $TAPisUsableOnce = $true,
         [Parameter()][ValidateRange(1, 395)]$QRCodeLifetimeInDays = 365,
         [Parameter()][ValidateRange(8, 20)]$QRCodePinLength = 8,
+        $IncludeTargets,
+        $ExcludeTargets,
+        $OverWriteTargets,
         $APIName = 'Set Authentication Policy',
         $Headers
     )
@@ -26,6 +29,28 @@ function Set-CIPPAuthenticationPolicy {
         $ErrorMessage = Get-CippException -Exception $_
         Write-LogMessage -headers $Headers -API $APIName -tenant $Tenant -message "Could not get CurrentInfo for $AuthenticationMethodId. Error:$($ErrorMessage.NormalizedError)" -sev Error -LogData $ErrorMessage
         Return "Could not get CurrentInfo for $AuthenticationMethodId. Error:$($ErrorMessage.NormalizedError)"
+    }
+
+    if ($IncludeTargets) {
+        $CurrentInfo.IncludeTargets = @($IncludeTargets | ForEach-Object {
+            [PSCustomObject]@{
+                targetType = 'group'
+                id         = $_
+                isRegistrationRequired = $false
+            }
+        })
+    }
+
+    if ($ExcludeTargets) {
+        $CurrentInfo.ExcludeTargets = @($ExcludeTargets | ForEach-Object {
+            [PSCustomObject]@{
+                targetType = 'group'
+                id         = $_
+            }
+        })
+    }
+    elseif ($OverWriteTargets){
+        $CurrentInfo.ExcludeTargets = @()
     }
 
     switch ($AuthenticationMethodId) {
