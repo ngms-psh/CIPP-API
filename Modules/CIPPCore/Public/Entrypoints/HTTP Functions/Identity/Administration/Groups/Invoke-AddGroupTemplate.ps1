@@ -27,7 +27,8 @@ function Invoke-AddGroupTemplate {
             '*security*' { 'security' }
             default { $Request.Body.groupType }
         }
-        if ($Request.body.membershipRules) { $groupType = 'dynamic' }
+        if ($Request.body.membershipRules -and $Request.Body.groupType -match '*Microsoft*') { $groupType = 'dynamic m365' }
+        elseif ($Request.body.membershipRules) { $groupType = 'dynamic' }
         $object = [PSCustomObject]@{
             displayName     = $Request.Body.displayName
             description     = $Request.Body.description
