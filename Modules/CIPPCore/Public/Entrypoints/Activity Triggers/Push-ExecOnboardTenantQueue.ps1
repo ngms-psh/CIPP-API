@@ -47,7 +47,8 @@ function Push-ExecOnboardTenantQueue {
             @{ Name = 'SharePoint Administrator'; Id = 'f28a1f50-f6e7-4571-818b-6a12f2af6b6c' },
             @{ Name = 'Authentication Policy Administrator'; Id = '0526716b-113d-4c15-b2c8-68e3c22b9f80' },
             @{ Name = 'Privileged Role Administrator'; Id = 'e8611ab8-c189-46e8-94e1-60213ab1f814' },
-            @{ Name = 'Privileged Authentication Administrator'; Id = '7be44c8a-adaf-4e2a-84d6-ab2649e08a13' }
+            @{ Name = 'Privileged Authentication Administrator'; Id = '7be44c8a-adaf-4e2a-84d6-ab2649e08a13' },
+            @{ Name = 'Domain Name Administrator'; Id = '8329153b-31d0-4727-b945-745eb3bc5f31' }
         )
 
         if ($OnboardingSteps.Step1.Status -ne 'succeeded') {
