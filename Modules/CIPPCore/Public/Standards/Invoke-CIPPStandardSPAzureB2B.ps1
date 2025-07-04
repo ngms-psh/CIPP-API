@@ -26,13 +26,13 @@ function Invoke-CIPPStandardSPAzureB2B {
         UPDATECOMMENTBLOCK
             Run the Tools\Update-StandardsComments.ps1 script to update this comment block
     .LINK
-        https://docs.cipp.app/user-documentation/tenant/standards/list-standards/sharepoint-standards#low-impact
+        https://docs.cipp.app/user-documentation/tenant/standards/list-standards
     #>
 
     param($Tenant, $Settings)
 
     $CurrentState = Get-CIPPSPOTenant -TenantFilter $Tenant |
-        Select-Object -Property EnableAzureADB2BIntegration
+        Select-Object -Property _ObjectIdentity_, TenantFilter, EnableAzureADB2BIntegration
 
     $StateIsCorrect = ($CurrentState.EnableAzureADB2BIntegration -eq $true)
 
@@ -45,7 +45,7 @@ function Invoke-CIPPStandardSPAzureB2B {
             }
 
             try {
-                Get-CIPPSPOTenant -TenantFilter $Tenant | Set-CIPPSPOTenant -Properties $Properties
+                $CurrentState | Set-CIPPSPOTenant -Properties $Properties
                 Write-LogMessage -API 'Standards' -Tenant $Tenant -Message 'Successfully set the SharePoint Azure B2B to enabled' -Sev Info
             } catch {
                 $ErrorMessage = Get-NormalizedError -Message $_.Exception.Message
@@ -58,7 +58,9 @@ function Invoke-CIPPStandardSPAzureB2B {
         if ($StateIsCorrect -eq $true) {
             Write-LogMessage -API 'Standards' -Tenant $Tenant -Message 'SharePoint Azure B2B is enabled' -Sev Info
         } else {
-            Write-LogMessage -API 'Standards' -Tenant $Tenant -Message 'SharePoint Azure B2B is not enabled' -Sev Alert
+            $Message = 'SharePoint Azure B2B is not enabled.'
+            Write-StandardsAlert -message $Message -object $CurrentState -tenant $Tenant -standardName 'SPAzureB2B' -standardId $Settings.standardId
+            Write-LogMessage -API 'Standards' -Tenant $Tenant -Message $Message -Sev Alert
         }
     }
 
