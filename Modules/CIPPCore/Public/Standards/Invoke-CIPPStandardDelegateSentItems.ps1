@@ -13,6 +13,8 @@ function Invoke-CIPPStandardDelegateSentItems {
         CAT
             Exchange Standards
         TAG
+        EXECUTIVETEXT
+            Ensures emails sent from shared mailboxes (like info@company.com) are stored in the shared mailbox rather than the individual sender's mailbox. This maintains complete email threads in one location, improving collaboration and ensuring all team members can see the full conversation history.
         ADDEDCOMPONENT
             {"type":"switch","label":"Include user mailboxes","name":"standards.DelegateSentItems.IncludeUserMailboxes"}
         IMPACT
@@ -25,10 +27,16 @@ function Invoke-CIPPStandardDelegateSentItems {
         UPDATECOMMENTBLOCK
             Run the Tools\Update-StandardsComments.ps1 script to update this comment block
     .LINK
-        https://docs.cipp.app/user-documentation/tenant/standards/list-standards/exchange-standards#medium-impact
+        https://docs.cipp.app/user-documentation/tenant/standards/list-standards
     #>
 
     param($Tenant, $Settings)
+    $TestResult = Test-CIPPStandardLicense -StandardName 'DelegateSentItems' -TenantFilter $Tenant -RequiredCapabilities @('EXCHANGE_S_STANDARD', 'EXCHANGE_S_ENTERPRISE', 'EXCHANGE_S_STANDARD_GOV', 'EXCHANGE_S_ENTERPRISE_GOV', 'EXCHANGE_LITE') #No Foundation because that does not allow powershell access
+
+    if ($TestResult -eq $false) {
+        Write-Host "We're exiting as the correct license is not present for this standard."
+        return $true
+    } #we're done.
     #$Rerun -Type Standard -Tenant $Tenant -API 'DelegateSentItems' -Settings $Settings
 
 
@@ -39,15 +47,23 @@ function Invoke-CIPPStandardDelegateSentItems {
 
     if ($Settings.IncludeUserMailboxes -eq $true) {
         $Mailboxes = New-ExoRequest -tenantid $Tenant -cmdlet 'Get-Mailbox' -cmdParams @{ RecipientTypeDetails = @('UserMailbox', 'SharedMailbox') } -Select 'Identity,UserPrincipalName,MessageCopyForSendOnBehalfEnabled,MessageCopyForSentAsEnabled' |
-        Where-Object { $_.MessageCopyForSendOnBehalfEnabled -eq $false -or $_.MessageCopyForSentAsEnabled -eq $false }
+            Where-Object { $_.MessageCopyForSendOnBehalfEnabled -eq $false -or $_.MessageCopyForSentAsEnabled -eq $false }
     } else {
         $Mailboxes = New-ExoRequest -tenantid $Tenant -cmdlet 'Get-Mailbox' -cmdParams @{ RecipientTypeDetails = @('SharedMailbox') } -Select 'Identity,UserPrincipalName,MessageCopyForSendOnBehalfEnabled,MessageCopyForSentAsEnabled' |
-        Where-Object { $_.MessageCopyForSendOnBehalfEnabled -eq $false -or $_.MessageCopyForSentAsEnabled -eq $false }
+            Where-Object { $_.MessageCopyForSendOnBehalfEnabled -eq $false -or $_.MessageCopyForSentAsEnabled -eq $false }
     }
 
+    $CurrentValue = if (!$Mailboxes) {
+        [PSCustomObject]@{ state = 'Configured correctly' }
+    } else {
+        [PSCustomObject]@{ NonCompliantMailboxes = $Mailboxes | Select-Object -Property UserPrincipalName, MessageCopyForSendOnBehalfEnabled, MessageCopyForSentAsEnabled }
+    }
+    $ExpectedValue = [PSCustomObject]@{
+        state = 'Configured correctly'
+    }
 
     Write-Host "Mailboxes: $($Mailboxes.Count)"
-    If ($Settings.remediate -eq $true) {
+    if ($Settings.remediate -eq $true) {
         Write-Host 'Time to remediate'
 
         if ($Mailboxes) {
@@ -89,8 +105,7 @@ function Invoke-CIPPStandardDelegateSentItems {
 
     if ($Settings.report -eq $true) {
         $Filtered = $Mailboxes | Select-Object -Property UserPrincipalName, MessageCopyForSendOnBehalfEnabled, MessageCopyForSentAsEnabled
-        $CurrentState = if ($null -eq $Mailboxes) { $true } else { $Filtered }
-        Set-CIPPStandardsCompareField -FieldName 'standards.DelegateSentItems' -FieldValue $CurrentState -TenantFilter $Tenant
+        Set-CIPPStandardsCompareField -FieldName 'standards.DelegateSentItems' -CurrentValue $CurrentValue -ExpectedValue $ExpectedValue -TenantFilter $Tenant
         Add-CIPPBPAField -FieldName 'DelegateSentItems' -FieldValue $Filtered -StoreAs json -Tenant $Tenant
     }
 }
